@@ -1,3 +1,5 @@
+from flask import Flask
+from flask import request
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -6,27 +8,47 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
+import requests
 
-options = Options()
+#You need to use following line [app Flask(__name__]
+app = Flask(__name__)
+@app.route('/')
+def index():
+    return "Hello World with flask"
+
+
+@app.route("/data")
+def data():
+    id_contact = request.args.get('id', '')
+    inn = request.args.get('inn', '')
+    options = Options()
 # options.add_argument('--headless')
 # options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    options.add_argument('--disable-dev-shm-usage')
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 
-driver.get('')
+    driver.get('')
+    time.sleep(30)
+    search = driver.find_element(By.CLASS_NAME,"index-search-input")
+    search.send_keys(str(inn))
+    search.send_keys(Keys.RETURN)
 
-time.sleep(4)
-search = driver.find_element(By.CLASS_NAME,"index-search-input")
-search.send_keys("7707049388")
-search.send_keys(Keys.RETURN)
+    time.sleep(19)
 
-time.sleep(5)
+    content = driver.page_source
+    page = BeautifulSoup(content, "html.parser")
 
-content = driver.page_source
-page = BeautifulSoup(content, "html.parser")
+    result = page.find_all('dd',itemprop="foundingDate")
 
-result = page.find_all('dd',itemprop="foundingDate")
+    print(result[0].get_text())
 
-print(result[0].get_text())
-driver.close()
+
+    driver.get(f'/crm.company.update?id={id_contact}&fields[UF_CRM_1722263448032]={result}')
+    time.sleep(1)
+    driver.close()
+
+    return id_contact + inn    
+
+if __name__ == '__main__':
+    app.run(port=5000,debug=True)
